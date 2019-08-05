@@ -32,7 +32,7 @@ from multiprocessing import Process, Manager
 from multiprocessing.managers import BaseManager
 from deform_visualize import plot_one_new
 
-torch.manual_seed(1234)  #Reproducibility
+torch.manual_seed(27)  #Reproducibility
 
 GPU = True
 device_idx = 0
@@ -527,8 +527,9 @@ if __name__ == '__main__':
     if args.test:
         # choose env
         # env_name="tac_follow_new4"
-        env_name="tac_follow_new4_random02"
-        env = UnityEnv(env_name, worker_id=35, use_visual=False, use_both=True)
+        # env_name="tac_follow_new4_random02"
+        env_name="tac_follow_new4_random"
+        env = UnityEnv(env_name, worker_id=9, use_visual=False, use_both=True)
         td3_trainer.load_model(model_path)
         eps_r=[]
         for eps in range(20):

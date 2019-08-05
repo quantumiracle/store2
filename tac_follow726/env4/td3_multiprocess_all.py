@@ -352,7 +352,7 @@ def worker(id, td3_trainer, rewards_queue, replay_buffer, max_episodes, max_step
     print(td3_trainer, replay_buffer)
 
     env_name="./tac_follow_new4_random02"
-    env = UnityEnv(env_name, worker_id=id+15, use_visual=False, use_both=True)
+    env = UnityEnv(env_name, worker_id=id+5, use_visual=False, use_both=True)
 
 
 
@@ -487,7 +487,7 @@ if __name__ == '__main__':
 
         rewards_queue=mp.Queue()  # used for get rewards from all processes and plot the curve
 
-        num_workers=4  # or: mp.cpu_count()
+        num_workers=3  # or: mp.cpu_count()
         processes=[]
         rewards=[]
 
@@ -518,10 +518,10 @@ if __name__ == '__main__':
         # choose env
         # env_name="./tac_follow_new4_random"
         env_name="./tac_follow_new4"
-        env = UnityEnv(env_name, worker_id=32, use_visual=False, use_both=True)
+        env = UnityEnv(env_name, worker_id=2, use_visual=False, use_both=True)
         eps_r=[]
         td3_trainer.load_model(model_path)
-        for eps in range(10):
+        for eps in range(20):
             state, info = env.reset()
             state0=state
             state = state_process(state, state0)
