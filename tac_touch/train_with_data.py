@@ -14,6 +14,10 @@ from gym_unity.envs import UnityEnv
 import argparse
 from PIL import Image
 from deform_visualize import plot_list_new
+import pickle
+
+data_file=open('data_fixed/data.pickle', "rb")
+label_file=open('data_fixed/label.pickle', "rb")
 
 parser = argparse.ArgumentParser(description='Train or test neural net motor controller.')
 parser.add_argument('--train', dest='train', action='store_true', default=False)
@@ -28,7 +32,7 @@ class Classifier(object):
         self.sess = tf.Session()
         self.label = tf.placeholder(tf.float32, [None, label_dim], 'label')  
         self.obs = tf.placeholder(tf.float32, [None, obs_dim], 'label')
-        self.lr = 5e-4 # 2e-4
+        self.lr = 8e-4 # 2e-4
 
         l1 = tf.layers.dense(self.obs, self.hidden_dim, tf.nn.relu)
         l2 = tf.layers.dense(l1, self.hidden_dim, tf.nn.relu)
@@ -57,6 +61,7 @@ class Classifier(object):
         saver=tf.train.Saver()
         saver.restore(self.sess, path)
 
+
 def plot(s):
     x=s[7::3]
     z=s[9::3]
@@ -68,66 +73,52 @@ def state_process(s):
 
 if __name__ == '__main__':
     model_path = './model/class'
-    training_episodes = 100000
+    training_episodes = 10000
     episode_length = 150
     obs_dim = 182  # total 280: 0 object index, 1-3 rotation value, 4-6 average contact point position, 7-279 pins positions
     state_dim = 6
     classifier = Classifier(obs_dim, state_dim)
-    env_name = "./tac_touch_fixed"  # Name of the Unity environment binary to launch
-
-
-    env = UnityEnv(env_name, worker_id=np.random.randint(0,10), use_visual=False, use_both=True)
 
     if args.train:
+        data=pickle.load(data_file)
+        label=pickle.load(label_file)
         loss_list=[]
-        # classifier.load(model_path)
+        classifier.load(model_path)
 
         for eps in range(training_episodes):
-            batch_s = []
-            batch_label = []
-            s,info = env.reset()
-            s0=np.array(s[7:])
-            for step in range(episode_length):
-                plot(s)
-                if step >0 and np.mean(np.abs(np.array(s[7:])-s0))>0.6 and s[4]+s[5]+s[6]!=0:  # set a threshold to extract deformation frames
-                    # print(np.mean(np.abs(np.array(s[7:])-s0)))
-                    batch_s.append(state_process(s))
-                    batch_label.append(s[1:7])  # predict number of collision points
 
-                s_, r, done, info= env.step([0])
-                s=s_
-
-                # if done:  # done signal not work in the env
-                #     break
-            if len(batch_s)>0:
-                loss = classifier.train(batch_s, batch_label)
-                if eps==0:
-                    loss_list.append(loss)
-                else:
-                    loss_list.append(0.9*loss_list[-1]+0.1*loss)
-                print('Eps: {}, Loss: {}'.format(eps, loss))
+            loss = classifier.train(data, label)
+            if eps==0:
+                loss_list.append(loss)
+            else:
+                loss_list.append(0.9*loss_list[-1]+0.1*loss)
+            print('Eps: {}, Loss: {}'.format(eps, loss))
             if eps % 10 ==0:
                 plt.plot(np.arange(len(loss_list)), loss_list)
-                plt.savefig('classify.png')
+                plt.savefig('classify_trainwithdata.png')
                 classifier.save(model_path)
 
     if args.test:
+        env_name = "./tac_touch_fixed"  # Name of the Unity environment binary to launch
+        env = UnityEnv(env_name, worker_id=np.random.randint(0,10), use_visual=False, use_both=True)
+
         env.reset()
-        classifier.load(model_path)
+        # classifier.load(model_path)  # if re-train
         test_steps = 150
         test_episode = 10
         
-
+        total_error_list=[]
         for _ in range(test_episode):
             s,info = env.reset()
             s0=np.array(s[7:])
             for step in range(episode_length):
-                if step >0 and np.mean(np.abs(np.array(s[7:])-s0))>0.15:
+                if step >0 and np.mean(np.abs(np.array(s[7:])-s0))>0.6 and s[4]+s[5]+s[6]!=0:  # should be same as in data_collect!
                     predict = classifier.predict_label(state_process(s))
-                    print('Pre: {}, Label: {}'.format(predict, s[1:7]))
-
+                    label = np.concatenate((s[1:4]/30., s[4:7]))
+                    print('Pre: {}, Label: {}'.format(predict, label ))
+                    error = np.abs(np.average(predict-label))
+                    total_error_list.append(error)
                 s_, r, done, info= env.step([0])
                 s=s_
 
-        # print('Eps: {}, Loss: {}'.format(eps, loss))
-
+        print(np.mean(total_error_list), np.std(total_error_list))
