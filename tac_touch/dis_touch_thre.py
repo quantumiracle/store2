@@ -27,7 +27,7 @@ class Classifier(object):
         self.sess = tf.Session()
         self.label = tf.placeholder(tf.float32, [None, label_dim], 'label')  
         self.obs = tf.placeholder(tf.float32, [None, obs_dim], 'label')
-        self.lr = 5e-4 # 2e-4
+        self.lr = 5e-5 # 2e-4
 
         l1 = tf.layers.dense(self.obs, self.hidden_dim, tf.nn.relu)
         l2 = tf.layers.dense(l1, self.hidden_dim, tf.nn.relu)
@@ -56,17 +56,38 @@ class Classifier(object):
         saver=tf.train.Saver()
         saver.restore(self.sess, path)
 
-def state_process(s):
+def plot(s):
     x=s[1::3]
     z=s[3::3]
     plot_list_new(x,z)
+
+def state_process(s, s0):
+    dis_threshold=0.05
+
+    x0=s0[1::3]
+    z0=s0[3::3]
+
+
+    x=s[1::3]
+    z=s[3::3]
+    dis=np.abs(x-x0)+np.abs(z-z0)
+    dis_threshold = max(1.2*np.average(dis), dis_threshold)
+    dis_idx=np.argwhere(dis>dis_threshold).reshape(-1)
+    dis[dis<=dis_threshold]=0
+    dis[dis>dis_threshold]=1
+    # print(dis_idx)
+    # plt.figure(figsize=(5,4))  # this line cause memory keeping increasing if not close the figure
+
+    # plot_list_new(x-object_x, z-object_z, dis_idx)  
+    processed_state=dis
+    return processed_state
 
 
 if __name__ == '__main__':
     model_path = './model/class'
     training_episodes = 100000
     episode_length = 150
-    obs_dim = 273
+    obs_dim = 91
     state_dim = 1
     classifier = Classifier(obs_dim, state_dim)
     env_name = "./tac_touch_fixed"  # Name of the Unity environment binary to launch
@@ -76,17 +97,18 @@ if __name__ == '__main__':
 
     if args.train:
         loss_list=[]
-        classifier.load(model_path)
+        # classifier.load(model_path)
 
         for eps in range(training_episodes):
             batch_s = []
             batch_label = []
             s,info = env.reset()
-            s0=np.array(s[1:])
+            s0=s
             for step in range(episode_length):
-                # state_process(s)
-                if step >0 and np.mean(np.abs(np.array(s[1:])-s0))>0.15:  # set a threshold to extract deformation frames
-                    batch_s.append(s[1:])
+                # plot(s)
+                if step >0 and np.mean(np.abs(np.array(s[1:])-np.array(s0[1:])))>0.15:  # set a threshold to extract deformation frames
+                    ps=state_process(s,s0)
+                    batch_s.append(ps)
                     batch_label.append([s[0]])  # predict number of collision points
 
                 s_, r, done, info= env.step([0])
@@ -115,10 +137,11 @@ if __name__ == '__main__':
 
         for _ in range(test_episode):
             s,info = env.reset()
-            s0=np.array(s[1:])
+            s0=s
             for step in range(episode_length):
-                if step >0 and np.mean(np.abs(np.array(s[1:])-s0))>0.15:
-                    predict = classifier.predict_label(s[1:])
+                if step >0 and np.mean(np.abs(np.array(s[1:])-np.array(s0[1:])))>0.15:
+                    ps=state_process(s,s0)
+                    predict = classifier.predict_label(ps)
                     print('Pre: {}, Label: {}'.format(predict, s[0]))
 
                 s_, r, done, info= env.step([0])
