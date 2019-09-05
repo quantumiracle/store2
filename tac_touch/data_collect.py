@@ -22,16 +22,36 @@ label_file=open('label.pickle', "wb")
 def plot(s):
     x=s[7::3]
     z=s[9::3]
-    plot_list_new(x,z)
+    average_mag=np.average(np.abs(np.concatenate((x,z))))
+    print(average_mag)  # 0.5674
+    x=np.array(x)/average_mag
+    z=np.array(z)/average_mag
+
+    real=np.load('real_pos.npy')
+    compare_plot(x,z, real)
+
+
+def compare_plot(x,y,list=[]):
+    plt.ion()
+    plt.clf()
+    plt.scatter(-y,x, c='b')   # match with the scene in Unity
+
+    if len(list)>0:
+        for i in list:
+            plt.scatter(i[0], i[1], c='g')
+    plt.savefig('./deform.png')
+    plt.show()
+    plt.pause(0.1)
+    plt.close()
 
 def state_process(s):
-    ps=np.concatenate((s[7::3],s[9::3]))
+    ps=np.concatenate((s[7::3],s[9::3]))  # 91*2
     return ps
 
 if __name__ == '__main__':
     training_episodes = 100
     episode_length = 150
-    obs_dim = 182  # total 280: 0 object index, 1-3 rotation value, 4-6 average contact point position, 7-279 pins positions
+    obs_dim = 182  # total 280 (select 182 as obs): 0 object index, 1-3 rotation value, 4-6 average contact point position, 7-279 pins positions
     state_dim = 6
     env_name = "./tac_touch_fixed"  # Name of the Unity environment binary to launch
     env = UnityEnv(env_name, worker_id=np.random.randint(0,10), use_visual=False, use_both=True)
@@ -43,10 +63,9 @@ if __name__ == '__main__':
         s,info = env.reset()
         s0=np.array(s[7:])
         for step in range(episode_length):
-            # plot(s)
+            plot(s)
             if step >0 and np.mean(np.abs(np.array(s[7:])-s0))>0.6 and s[4]+s[5]+s[6]!=0:  # set a threshold to extract deformation frames
-                # print(np.mean(np.abs(np.array(s[7:])-s0)))
-                # print(s[:7])
+
                 batch_s.append(state_process(s))
                 batch_label.append(np.concatenate((s[1:4]/30., s[4:7])))  # normalize the rotation range by 30, to get [-1,1]
 

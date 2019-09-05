@@ -1,2 +1,2 @@
-model_checkpoint_path: "class"
-all_model_checkpoint_paths: "class"
+model_checkpoint_path: "class_obj_thre"
+all_model_checkpoint_paths: "class_obj_thre"
