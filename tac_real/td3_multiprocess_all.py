@@ -356,14 +356,13 @@ def worker(id, td3_trainer, rewards_queue, replay_buffer, max_episodes, max_step
     env = UnityEnv(env_name, worker_id=id+0, use_visual=False, use_both=True)
 
 
-
+    frame_idx=0
     # training loop
     for eps in range(max_episodes):
-        frame_idx=0
-        rewards=[]
+        
+        # rewards=[]
         episode_reward = 0
         state, info = env.reset()
-        state0=state
         state = state_process(state)
 
         for step in range(max_steps):
@@ -398,8 +397,8 @@ def worker(id, td3_trainer, rewards_queue, replay_buffer, max_episodes, max_step
             if done:
                 break
         print('Episode: ', eps, '| Episode Reward: ', episode_reward)
-        if len(rewards) == 0: rewards.append(episode_reward)
-        else: rewards.append(rewards[-1]*0.9+episode_reward*0.1)
+        # if len(rewards) == 0: rewards.append(episode_reward)
+        # else: rewards.append(rewards[-1]*0.9+episode_reward*0.1)
         rewards_queue.put(episode_reward)
 
     td3_trainer.save_model(model_path)
