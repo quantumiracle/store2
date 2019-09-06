@@ -288,7 +288,8 @@ class TD3_Trainer():
         new_action, log_prob, z, mean, log_std = self.policy_net.evaluate(state, deterministic, eval_noise_scale=0.0)  # no noise, deterministic policy gradients
         new_next_action, _, _, _, _ = self.target_policy_net.evaluate(next_state, deterministic, eval_noise_scale=eval_noise_scale) # clipped normal noise
 
-        reward = reward_scale * (reward - reward.mean(dim=0)) / (reward.std(dim=0) + 1e-6) # normalize with batch mean and std; plus a small number to prevent numerical problem
+        # reward = reward_scale * (reward - reward.mean(dim=0)) / (reward.std(dim=0) + 1e-6) # normalize with batch mean and std; plus a small number to prevent numerical problem
+        reward = reward_scale * (reward) / (reward.std(dim=0) + 1e-6) # normalize with batch mean and std; plus a small number to prevent numerical problem
 
     # Training Q Function
         target_q_min = torch.min(self.target_q_net1(next_state, new_next_action),self.target_q_net2(next_state, new_next_action))
@@ -352,7 +353,7 @@ def worker(id, td3_trainer, rewards_queue, replay_buffer, max_episodes, max_step
     print(td3_trainer, replay_buffer)
 
     env_name="./tac_real2"
-    env = UnityEnv(env_name, worker_id=id+7, use_visual=False, use_both=True)
+    env = UnityEnv(env_name, worker_id=id+0, use_visual=False, use_both=True)
 
 
 
@@ -363,7 +364,7 @@ def worker(id, td3_trainer, rewards_queue, replay_buffer, max_episodes, max_step
         episode_reward = 0
         state, info = env.reset()
         state0=state
-        state = state_process(state, state0)
+        state = state_process(state)
 
         for step in range(max_steps):
             if frame_idx > explore_steps:
@@ -373,7 +374,7 @@ def worker(id, td3_trainer, rewards_queue, replay_buffer, max_episodes, max_step
     
             try:
                 next_state, reward, done, info = env.step(action)
-                next_state = state_process(next_state, state0)
+                next_state = state_process(next_state)
             except KeyboardInterrupt:
                 print('Finished')
                 td3_trainer.save_model(model_path)
@@ -424,11 +425,11 @@ def plot(rewards):
     plt.savefig('td3_all_random02.png')
     # plt.show()
 
-def state_process(s, s0):
+def state_process(s):
     factor=0.5674
 
-    x0=s0[3::3]
-    z0=s0[5::3]
+    x0=s[3::3]
+    z0=s[5::3]
     x=np.array(x0)/factor
     z=np.array(z0)/factor
 
@@ -479,7 +480,7 @@ if __name__ == '__main__':
 
         rewards_queue=mp.Queue()  # used for get rewards from all processes and plot the curve
 
-        num_workers=4  # or: mp.cpu_count()
+        num_workers=3  # or: mp.cpu_count()
         processes=[]
         rewards=[]
 
@@ -488,8 +489,10 @@ if __name__ == '__main__':
             update_itr, explore_noise_scale, eval_noise_scale, reward_scale, DETERMINISTIC, hidden_dim, model_path))  # the args contain shared and not shared
             process.daemon=True  # all processes closed when the main stops
             processes.append(process)
+            time.sleep(0.5)
+            process.start()
 
-        [p.start() for p in processes]
+        # [p.start() for p in processes]
         while True:  # keep geting the episode reward from the queue
             r = rewards_queue.get()
             if r is not None:
@@ -515,14 +518,13 @@ if __name__ == '__main__':
         for eps in range(20):
             state, info = env.reset()
             state0=state
-            state = state_process(state, state0)
+            state = state_process(state)
             episode_reward = 0
 
             for step in range(max_steps):
                 action = td3_trainer.policy_net.get_action(state, deterministic = DETERMINISTIC, explore_noise_scale=0.0)
                 next_state, reward, done, info = env.step(action)
-                reward+=100
-                next_state = state_process(next_state, state0)
+                next_state = state_process(next_state)
                 episode_reward += reward
                 state=next_state
                 if done:
