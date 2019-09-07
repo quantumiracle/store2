@@ -250,8 +250,10 @@ class TD3_Trainer():
         self.target_policy_net = self.target_ini(self.policy_net, self.target_policy_net)
         
 
-        q_lr = 1e-3
-        policy_lr = 1e-3
+        # q_lr = 3e-4
+        # policy_lr = 1e-4
+        q_lr = 1e-4
+        policy_lr = 3e-5
         self.update_cnt = 0
         self.policy_target_update_interval = policy_target_update_interval
 
@@ -426,11 +428,14 @@ def plot(rewards):
 
 def state_process(s):
     factor=0.5674
-
+    
     x0=s[3::3]
     z0=s[5::3]
-    x=np.array(x0)/factor
-    z=np.array(z0)/factor
+    noise_x = np.random.normal(0, 1e-2, np.array(x0).shape[0])
+    noise_z = np.random.normal(0, 1e-2, np.array(z0).shape[0])
+    x=np.array(x0)/factor + noise_x
+    z=np.array(z0)/factor + noise_z
+    
 
     return np.transpose([x,z]).reshape(-1)  # ((x,x,..), (y,y,..))
 
@@ -451,7 +456,7 @@ if __name__ == '__main__':
     batch_size  = 256
     explore_steps = 400  # for random action sampling in the beginning of training
     update_itr = 1
-    explore_noise_scale=1.0
+    explore_noise_scale=4.0
     eval_noise_scale=0.5
     reward_scale = 1.0
     action_range=20.
@@ -466,7 +471,7 @@ if __name__ == '__main__':
 
 
     if args.train:
-        # td3_trainer.load_model(model_path)
+        td3_trainer.load_model(model_path)
         td3_trainer.q_net1.share_memory()
         td3_trainer.q_net2.share_memory()
         td3_trainer.target_q_net1.share_memory()
@@ -479,7 +484,7 @@ if __name__ == '__main__':
 
         rewards_queue=mp.Queue()  # used for get rewards from all processes and plot the curve
 
-        num_workers=3  # or: mp.cpu_count()
+        num_workers=4  # or: mp.cpu_count()
         processes=[]
         rewards=[]
 
@@ -511,7 +516,7 @@ if __name__ == '__main__':
     if args.test:
         # choose env
         env_name="./tac_real2"
-        env = UnityEnv(env_name, worker_id=2, use_visual=False, use_both=True)
+        env = UnityEnv(env_name, worker_id=20, use_visual=False, use_both=True)
         eps_r=[]
         td3_trainer.load_model(model_path)
         for eps in range(20):
