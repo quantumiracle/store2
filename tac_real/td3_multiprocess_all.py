@@ -232,7 +232,7 @@ class PolicyNetwork(nn.Module):
 
 
 class TD3_Trainer():
-    def __init__(self, replay_buffer, hidden_dim, action_range, policy_target_update_interval=1):
+    def __init__(self, replay_buffer, state_dim, action_dim, hidden_dim, action_range, policy_target_update_interval=1):
         self.replay_buffer = replay_buffer
 
 
@@ -250,10 +250,8 @@ class TD3_Trainer():
         self.target_policy_net = self.target_ini(self.policy_net, self.target_policy_net)
         
 
-        # q_lr = 3e-4
-        # policy_lr = 1e-4
-        q_lr = 1e-4
-        policy_lr = 3e-5
+        q_lr = 1e-3
+        policy_lr = 1e-3
         self.update_cnt = 0
         self.policy_target_update_interval = policy_target_update_interval
 
@@ -428,16 +426,16 @@ def plot(rewards):
 
 def state_process(s):
     factor=0.5674
-    
+
     x0=s[3::3]
     z0=s[5::3]
+    
     noise_x = np.random.normal(0, 1e-2, np.array(x0).shape[0])
     noise_z = np.random.normal(0, 1e-2, np.array(z0).shape[0])
     x=np.array(x0)/factor + noise_x
     z=np.array(z0)/factor + noise_z
-    
 
-    return np.transpose([x,z]).reshape(-1)  # ((x,x,..), (y,y,..))
+    return np.transpose([x,z]).reshape(-1)  # (x,y,x,y,...)
 
 if __name__ == '__main__':
     replay_buffer_size = 1e6
@@ -456,7 +454,7 @@ if __name__ == '__main__':
     batch_size  = 256
     explore_steps = 400  # for random action sampling in the beginning of training
     update_itr = 1
-    explore_noise_scale=4.0
+    explore_noise_scale=1.0
     eval_noise_scale=0.5
     reward_scale = 1.0
     action_range=20.
@@ -467,7 +465,7 @@ if __name__ == '__main__':
     DETERMINISTIC=True  # DDPG: deterministic policy gradient
     model_path = './model/td3_all'
 
-    td3_trainer=TD3_Trainer(replay_buffer, hidden_dim=hidden_dim, policy_target_update_interval=policy_target_update_interval, action_range=action_range )
+    td3_trainer=TD3_Trainer(replay_buffer, state_dim=state_dim, action_dim=action_dim, hidden_dim=hidden_dim, policy_target_update_interval=policy_target_update_interval, action_range=action_range )
 
 
     if args.train:
@@ -484,7 +482,7 @@ if __name__ == '__main__':
 
         rewards_queue=mp.Queue()  # used for get rewards from all processes and plot the curve
 
-        num_workers=4  # or: mp.cpu_count()
+        num_workers=3  # or: mp.cpu_count()
         processes=[]
         rewards=[]
 
@@ -516,7 +514,7 @@ if __name__ == '__main__':
     if args.test:
         # choose env
         env_name="./tac_real2"
-        env = UnityEnv(env_name, worker_id=20, use_visual=False, use_both=True)
+        env = UnityEnv(env_name, worker_id=4, use_visual=False, use_both=True)
         eps_r=[]
         td3_trainer.load_model(model_path)
         for eps in range(20):
