@@ -353,13 +353,13 @@ def worker(id, td3_trainer, rewards_queue, replay_buffer, max_episodes, max_step
 
     env_name="./tac_follow_new4_random02"
     env = UnityEnv(env_name, worker_id=id+5, use_visual=False, use_both=True)
-
+    frame_idx=0
+    rewards=[]
 
 
     # training loop
     for eps in range(max_episodes):
-        frame_idx=0
-        rewards=[]
+
         episode_reward = 0
         state, info = env.reset()
         state0=state
@@ -398,8 +398,8 @@ def worker(id, td3_trainer, rewards_queue, replay_buffer, max_episodes, max_step
             if done:
                 break
         print('Episode: ', eps, '| Episode Reward: ', episode_reward)
-        if len(rewards) == 0: rewards.append(episode_reward)
-        else: rewards.append(rewards[-1]*0.9+episode_reward*0.1)
+        # if len(rewards) == 0: rewards.append(episode_reward)
+        # else: rewards.append(rewards[-1]*0.9+episode_reward*0.1)
         rewards_queue.put(episode_reward)
 
     td3_trainer.save_model(model_path)
@@ -452,7 +452,7 @@ if __name__ == '__main__':
 
 
     # hyper-parameters for RL training
-    max_episodes  = 5000
+    max_episodes  = 6000
     max_steps   = 100
     batch_size  = 256
     explore_steps = 0  # for random action sampling in the beginning of training
@@ -474,7 +474,7 @@ if __name__ == '__main__':
 
 
     if args.train:
-        td3_trainer.load_model(model_path)
+        # td3_trainer.load_model(model_path)
         td3_trainer.q_net1.share_memory()
         td3_trainer.q_net2.share_memory()
         td3_trainer.target_q_net1.share_memory()
@@ -487,7 +487,7 @@ if __name__ == '__main__':
 
         rewards_queue=mp.Queue()  # used for get rewards from all processes and plot the curve
 
-        num_workers=3  # or: mp.cpu_count()
+        num_workers=2  # or: mp.cpu_count()
         processes=[]
         rewards=[]
 
@@ -516,8 +516,9 @@ if __name__ == '__main__':
         
     if args.test:
         # choose env
-        # env_name="./tac_follow_new4_random"
-        env_name="./tac_follow_new4"
+        env_name="./tac_follow_new4_random"
+        # env_name="./tac_follow_new4_random02"
+        # env_name="./tac_follow_new4"
         env = UnityEnv(env_name, worker_id=2, use_visual=False, use_both=True)
         eps_r=[]
         td3_trainer.load_model(model_path)
