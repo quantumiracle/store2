@@ -82,7 +82,7 @@ msgpack==0.6.1
 nbconvert==5.5.0
 nbformat==4.4.0
 netifaces==0.10.4
-notebook==6.0.0
+notebook==6.4.1
 numexpr==2.6.4
 numpy==1.16.4
 oauth==1.0.1
