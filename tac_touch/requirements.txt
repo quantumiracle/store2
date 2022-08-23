@@ -79,7 +79,7 @@ meld==3.18.0
 mistune==0.8.4
 mpmath==1.0.0
 msgpack==0.6.1
-nbconvert==5.5.0
+nbconvert==6.5.1
 nbformat==4.4.0
 netifaces==0.10.4
 notebook==6.0.0
